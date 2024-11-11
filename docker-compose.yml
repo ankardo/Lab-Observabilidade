@@ -1,0 +1,53 @@
+---
+networks:
+  default:
+    driver: bridge
+services:
+  zipkin:
+    container_name: zipkin
+    hostname: zipkin
+    restart: always
+    image: openzipkin/zipkin:latest
+    ports: ['${ZIPKIN_PORT}:${ZIPKIN_PORT}']
+    networks: [default]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --spider --no-verbose --tries=1 --timeout=5 http://localhost:9411/health
+          || exit 1
+      start_interval: 2s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  otel-collector:
+    container_name: otel-collector
+    hostname: otel-collector
+    restart: always
+    image: otel/opentelemetry-collector:latest
+    command: [--config=/etc/otel-collector-config.yml]
+    ports: [4318:4318, 55681:55681, 13133:13133, 8888:8888]
+    volumes: [./otel-collector-config.yml:/etc/otel-collector-config.yml]
+    networks: [default]
+    depends_on: [zipkin]
+  service_a:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: service-a
+        SERVICE_PORT: ${SERVICE_A_PORT}
+    env_file: [.env]
+    ports: ['${SERVICE_A_PORT}:${SERVICE_A_PORT}']
+    depends_on: [service_b]
+    networks: [default]
+  service_b:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: service-b
+        SERVICE_PORT: ${SERVICE_B_PORT}
+    env_file: [.env]
+    depends_on: [otel-collector]
+    ports: ['${SERVICE_B_PORT}:${SERVICE_B_PORT}']
+    networks: [default]
