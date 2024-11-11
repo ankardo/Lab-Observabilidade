@@ -13,7 +13,7 @@ import (
 )
 
 func InitTracer(serviceName string) func() {
-	exporterURL := "otel-collector:4317"
+	exporterURL := "otel-collector:4318"
 	ctx := context.Background()
 	exporter, err := otlptracehttp.New(
 		ctx,
