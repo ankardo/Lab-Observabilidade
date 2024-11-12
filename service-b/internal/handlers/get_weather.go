@@ -25,8 +25,16 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	cep := r.URL.Query().Get("zipcode")
 	weather, err := h.GetWeatherUseCase.Execute(cep, h.Tracer, ctx)
 	if err != nil {
-
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		switch err.Error() {
+		case "invalid zipcode":
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		case "cannot find zipcode":
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case "could not retrieve weather information":
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		default:
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 
